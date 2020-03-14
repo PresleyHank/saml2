@@ -6,6 +6,7 @@ namespace SAML2\XML\samlp;
 
 use DOMDocument;
 use Exception;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use SAML2\CertificatesMock;
 use SAML2\Constants;
@@ -13,6 +14,7 @@ use SAML2\DOMDocumentFactory;
 use SAML2\XML\saml\AuthnContextClassRef;
 use SAML2\XML\saml\Issuer;
 use SAML2\XML\saml\NameID;
+use SAML2\XML\saml\Subject;
 use SAML2\Utils;
 
 /**
@@ -31,8 +33,7 @@ class AuthnRequestTest extends TestCase
             ],
             'better'
         );
-        $authnRequest = new AuthnRequest();
-        $authnRequest->setRequestedAuthnContext($rac);
+        $authnRequest = new AuthnRequest($rac);
 
         $authnRequestElement = $authnRequest->toXML();
 
@@ -71,7 +72,7 @@ class AuthnRequestTest extends TestCase
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xml)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xml)->documentElement);
 
         $expectedIssueInstant = Utils::xsDateTimeToTimestamp('2004-12-05T09:21:59Z');
         $this->assertEquals($expectedIssueInstant, $authnRequest->getIssueInstant());
@@ -116,7 +117,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
 
         $this->assertXmlStringEqualsXmlString($document->C14N(), $authnRequest->toXML()->C14N());
     }
@@ -140,7 +141,7 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xml)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xml)->documentElement);
 
         $nameId = $authnRequest->getNameId();
         $this->assertEquals("user@example.org", $nameId->getValue());
@@ -150,9 +151,8 @@ AUTHNREQUEST;
 
     public function testThatTheSubjectCanBeSetBySettingTheNameId(): void
     {
-        $request = new AuthnRequest();
         $nameId = new NameID('user@example.org', null, null, Constants::NAMEID_UNSPECIFIED);
-        $request->setNameId($nameId);
+        $request = new AuthnRequest(null, new Subject($nameId));
 
         $requestAsXML = $request->toXML()->ownerDocument->saveXML();
         $expected = '<saml:Subject><saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">user@example.org</saml:NameID></saml:Subject>';
@@ -192,7 +192,7 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xml)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xml)->documentElement);
 
         $key = CertificatesMock::getPrivateKey();
         $authnRequest->decryptNameId($key);
@@ -218,12 +218,10 @@ AUTHNREQUEST;
 
         // the Issuer
         $issuer = new Issuer('https://gateway.example.org/saml20/sp/metadata');
+        $destination = 'https://tiqr.example.org/idp/profile/saml2/Redirect/SSO';
 
         // basic AuthnRequest
-        $request = new AuthnRequest();
-        $request->setIssuer($issuer);
-        $request->setDestination('https://tiqr.example.org/idp/profile/saml2/Redirect/SSO');
-        $request->setNameId($nameId);
+        $request = new AuthnRequest(null, new Subject($nameId), null, null, null, null, null, null, $issuer, null, null, null, $destination);
 
         // encrypt the NameID
         $key = CertificatesMock::getPublicKey();
@@ -333,7 +331,7 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
 
         $expectedList = ["Legacy1", "http://example.org/AAP", "urn:example:1"];
 
@@ -367,7 +365,7 @@ AUTHNREQUEST;
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Could not get ProviderID');
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
     }
 
 
@@ -437,7 +435,7 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
 
         $this->assertEquals($requesterId, $authnRequest->getRequesterID());
     }
@@ -509,7 +507,7 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
 
         $this->assertEquals($proxyCount, $authnRequest->getProxyCount());
     }
@@ -539,7 +537,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
 
         $nameIdPolicy = $authnRequest->getNameIdPolicy();
 
@@ -654,7 +652,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
 
         $this->assertFalse($authnRequest->getForceAuthn());
 
@@ -674,7 +672,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
         $this->assertTrue($authnRequest->getForceAuthn());
     }
 
@@ -737,7 +735,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
 
         $this->assertFalse($authnRequest->getIsPassive());
 
@@ -756,7 +754,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
         $this->assertFalse($authnRequest->getIsPassive());
 
         $xml = <<<AUTHNREQUEST
@@ -774,7 +772,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
         $this->assertTrue($authnRequest->getIsPassive());
     }
 
@@ -876,7 +874,7 @@ AUTHNREQUEST;
 AUTHNREQUEST;
 
         $document     = DOMDocumentFactory::fromString($xml);
-        $authnRequest = new AuthnRequest($document->documentElement);
+        $authnRequest = AuthnRequest::fromXML($document->documentElement);
 
         $this->assertEquals("Example SP", $authnRequest->getProviderName());
     }
@@ -949,7 +947,7 @@ AUTHNREQUEST;
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('More than one <saml:Subject> in <saml:AuthnRequest>');
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xml)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xml)->documentElement);
     }
 
 
@@ -975,9 +973,9 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('More than one <saml:NameID> or <saml:EncryptedID> in <saml:Subject>');
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xml)->documentElement);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('More than one <saml:NameID> in <samlp:AuthnRequest>.');
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xml)->documentElement);
     }
 
 
@@ -1003,7 +1001,7 @@ AUTHNREQUEST;
 
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Missing <saml:NameID> or <saml:EncryptedID> in <saml:Subject>');
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xml)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xml)->documentElement);
     }
 
 
@@ -1050,7 +1048,7 @@ AUTHNREQUEST;
      */
     public function testAudiencesAreReadCorrectly(): void
     {
-        $expectedAudiences = array('https://sp1.example.org', 'https://sp2.example.org');
+        $expectedAudiences = ['https://sp1.example.org', 'https://sp2.example.org'];
 
         $xmlRequest = <<<AUTHNREQUEST
 <samlp:AuthnRequest
@@ -1070,7 +1068,7 @@ AUTHNREQUEST;
 </samlp:AuthnRequest>
 AUTHNREQUEST;
 
-        $authnRequest = new AuthnRequest(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
+        $authnRequest = AuthnRequest::fromXML(DOMDocumentFactory::fromString($xmlRequest)->documentElement);
 
         $this->assertEquals($expectedAudiences, $authnRequest->getAudiences());
     }
