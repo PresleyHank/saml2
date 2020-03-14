@@ -104,6 +104,9 @@ class Response extends AbstractStatusResponse
      */
     public static function fromXML(DOMElement $xml): object
     {
+        Assert::same($xml->localName, 'Response');
+        Assert::same($xml->namespaceURI, Response::NS);
+
         $id = self::getAttribute($xml, 'ID');
         $version = self::getAttribute($xml, 'Version');
         $issueInstant = Utils::xsDateTimeToTimestamp(self::getAttribute($xml, 'IssueInstant'));

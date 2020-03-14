@@ -26,6 +26,9 @@ class LogoutResponse extends AbstractStatusResponse
      */
     public static function fromXML(DOMElement $xml): object
     {
+        Assert::same($xml->localName, 'LogoutResponse');
+        Assert::same($xml->namespaceURI, LogoutResponse::NS);
+
         $id = self::getAttribute($xml, 'ID');
         $version = self::getAttribute($xml, 'Version');
         $issueInstant = Utils::xsDateTimeToTimestamp(self::getAttribute($xml, 'IssueInstant'));

@@ -101,6 +101,9 @@ class ArtifactResponse extends AbstractStatusResponse
      */
     public static function fromXML(DOMElement $xml): object
     {
+        Assert::same($xml->localName, 'ArtifactResponse');
+        Assert::same($xml->namespaceURI, ArtifactResponse::NS);
+
         $id = self::getAttribute($xml, 'ID');
         $version = self::getAttribute($xml, 'Version');
         $issueInstant = Utils::xsDateTimeToTimestamp(self::getAttribute($xml, 'IssueInstant'));
@@ -160,7 +163,7 @@ class ArtifactResponse extends AbstractStatusResponse
      */
     public function toXML(?DOMElement $parent = null): DOMElement
     {
-        $e = parent::toXML();
+        $e = parent::toXML($parent);
 
         if ($this->any !== null) {
             $node = $e->ownerDocument->importNode($this->any, true);
